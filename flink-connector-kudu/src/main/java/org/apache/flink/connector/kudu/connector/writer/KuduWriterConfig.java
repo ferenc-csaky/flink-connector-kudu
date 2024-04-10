@@ -18,7 +18,7 @@
 package org.apache.flink.connector.kudu.connector.writer;
 
 import org.apache.flink.annotation.PublicEvolving;
-import org.apache.flink.connector.kudu.streaming.KuduSink;
+import org.apache.flink.connector.kudu.sink.KuduSink;
 
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.kudu.client.AsyncKuduClient;
@@ -29,19 +29,17 @@ import java.util.Objects;
 import static org.apache.flink.util.Preconditions.checkNotNull;
 import static org.apache.kudu.client.SessionConfiguration.FlushMode;
 
-/**
- * Configuration used by {@link KuduSink}. Specifies connection and other necessary properties.
- */
+/** Configuration used by {@link KuduSink}. Specifies connection and other necessary properties. */
 @PublicEvolving
 public class KuduWriterConfig implements Serializable {
 
     private final String masters;
     private final FlushMode flushMode;
     private final long operationTimeout;
-    private int maxBufferSize;
-    private int flushInterval;
-    private boolean ignoreNotFound;
-    private boolean ignoreDuplicate;
+    private final int maxBufferSize;
+    private final int flushInterval;
+    private final boolean ignoreNotFound;
+    private final boolean ignoreDuplicate;
 
     private KuduWriterConfig(
             String masters,
