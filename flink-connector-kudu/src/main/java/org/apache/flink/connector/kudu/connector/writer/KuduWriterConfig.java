@@ -18,7 +18,6 @@
 package org.apache.flink.connector.kudu.connector.writer;
 
 import org.apache.flink.annotation.PublicEvolving;
-import org.apache.flink.connector.kudu.format.KuduOutputFormat;
 import org.apache.flink.connector.kudu.streaming.KuduSink;
 
 import org.apache.commons.lang3.builder.ToStringBuilder;
@@ -31,8 +30,7 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
 import static org.apache.kudu.client.SessionConfiguration.FlushMode;
 
 /**
- * Configuration used by {@link KuduSink} and {@link KuduOutputFormat}. Specifies connection and
- * other necessary properties.
+ * Configuration used by {@link KuduSink}. Specifies connection and other necessary properties.
  */
 @PublicEvolving
 public class KuduWriterConfig implements Serializable {
