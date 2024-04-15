@@ -19,6 +19,7 @@ package org.apache.flink.connector.kudu.table;
 
 import org.apache.flink.connector.kudu.connector.KuduTableInfo;
 import org.apache.flink.connector.kudu.connector.KuduTestBase;
+import org.apache.flink.connector.kudu.table.catalog.KuduCatalog;
 import org.apache.flink.table.api.TableEnvironment;
 import org.apache.flink.types.Row;
 import org.apache.flink.util.CloseableIterator;
@@ -32,7 +33,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-/** Integration tests for {@link KuduTableSource}. */
+/** Integration tests for {@link KuduDynamicTableSource}. */
 public class KuduTableSourceITCase extends KuduTestBase {
     private TableEnvironment tableEnv;
     private KuduCatalog catalog;
@@ -43,7 +44,7 @@ public class KuduTableSourceITCase extends KuduTestBase {
     void init() {
         tableInfo = booksTableInfo("books", true);
         setUpDatabase(tableInfo);
-        tableEnv = KuduTableTestUtils.createTableEnvWithBlinkPlannerBatchMode();
+        tableEnv = KuduTableTestUtils.createTableEnvInBatchMode();
         catalog = new KuduCatalog(getMasterAddress());
         tableEnv.registerCatalog("kudu", catalog);
         tableEnv.useCatalog("kudu");

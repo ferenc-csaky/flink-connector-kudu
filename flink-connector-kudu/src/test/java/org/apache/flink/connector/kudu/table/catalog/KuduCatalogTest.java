@@ -15,31 +15,22 @@
  * limitations under the License.
  */
 
-package org.apache.flink.connector.kudu.table;
+package org.apache.flink.connector.kudu.table.catalog;
 
-import org.apache.flink.api.common.typeinfo.TypeHint;
 import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.api.java.tuple.Tuple2;
-import org.apache.flink.connector.kudu.connector.KuduTableInfo;
 import org.apache.flink.connector.kudu.connector.KuduTestBase;
-import org.apache.flink.connector.kudu.connector.writer.AbstractSingleOperationMapper;
-import org.apache.flink.connector.kudu.connector.writer.KuduWriterConfig;
-import org.apache.flink.connector.kudu.connector.writer.TupleOperationMapper;
-import org.apache.flink.connector.kudu.sink.KuduSink;
+import org.apache.flink.connector.kudu.table.KuduTableTestUtils;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.SinkFunction;
 import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.TableException;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
-import org.apache.flink.table.catalog.CatalogTable;
-import org.apache.flink.table.catalog.ObjectPath;
 import org.apache.flink.types.Row;
 
-import org.apache.kudu.ColumnSchema;
 import org.apache.kudu.Schema;
 import org.apache.kudu.Type;
-import org.apache.kudu.client.CreateTableOptions;
 import org.apache.kudu.client.KuduScanner;
 import org.apache.kudu.client.KuduTable;
 import org.apache.kudu.client.RowResult;
@@ -70,7 +61,7 @@ public class KuduCatalogTest extends KuduTestBase {
     public void init() {
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         catalog = new KuduCatalog(getMasterAddress());
-        tableEnv = KuduTableTestUtils.createTableEnvWithBlinkPlannerStreamingMode(env);
+        tableEnv = KuduTableTestUtils.createTableEnvInStreamingMode(env);
         tableEnv.registerCatalog("kudu", catalog);
         tableEnv.useCatalog("kudu");
     }
@@ -166,73 +157,6 @@ public class KuduCatalogTest extends KuduTestBase {
         List<Tuple2<Boolean, Long>> expected =
                 Lists.newArrayList(Tuple2.of(true, 1L), Tuple2.of(false, 1L), Tuple2.of(true, 2L));
 
-        assertEquals(new HashSet<>(expected), new HashSet<>(CollectionSink.output));
-        CollectionSink.output.clear();
-    }
-
-    @Test
-    public void dataStreamEndToEstTest() throws Exception {
-        KuduCatalog catalog = new KuduCatalog(getMasterAddress());
-        // Creating table through catalog
-        KuduTableFactory tableFactory = catalog.getKuduTableFactory();
-
-        KuduTableInfo tableInfo =
-                KuduTableInfo.forTable("TestTable7")
-                        .createTableIfNotExists(
-                                () ->
-                                        Lists.newArrayList(
-                                                new ColumnSchema.ColumnSchemaBuilder(
-                                                                "k", Type.INT32)
-                                                        .key(true)
-                                                        .build(),
-                                                new ColumnSchema.ColumnSchemaBuilder(
-                                                                "v", Type.STRING)
-                                                        .build()),
-                                () ->
-                                        new CreateTableOptions()
-                                                .setNumReplicas(1)
-                                                .addHashPartitions(Lists.newArrayList("k"), 2));
-
-        catalog.createTable(tableInfo, false);
-
-        ObjectPath path = catalog.getObjectPath("TestTable7");
-        CatalogTable table = catalog.getTable(path);
-
-        List<Tuple2<Integer, String>> input =
-                Lists.newArrayList(Tuple2.of(1, "one"), Tuple2.of(2, "two"), Tuple2.of(3, "three"));
-
-        // Writing with simple sink
-        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-        env.setParallelism(2);
-        KuduWriterConfig writerConfig =
-                KuduWriterConfig.Builder.setMasters(getMasterAddress()).build();
-        env.fromCollection(input)
-                .sinkTo(
-                        KuduSink.<Tuple2<Integer, String>>builder()
-                                .setWriterConfig(writerConfig)
-                                .setTableInfo(tableInfo)
-                                .setOperationMapper(
-                                        new TupleOperationMapper<>(
-                                                new String[] {"k", "v"},
-                                                AbstractSingleOperationMapper.KuduOperation.INSERT))
-                                .build());
-        env.execute();
-        // Reading and validating data
-        env = StreamExecutionEnvironment.getExecutionEnvironment();
-        env.setParallelism(2);
-
-        CollectionSink.output.clear();
-        tableFactory
-                .createTableSource(path, table)
-                .getDataStream(env)
-                .map(row -> Tuple2.of((int) row.getField(0), (String) row.getField(1)))
-                .returns(new TypeHint<Tuple2<Integer, String>>() {})
-                .addSink(new CollectionSink<>())
-                .setParallelism(1);
-        env.execute();
-
-        List<Tuple2<Integer, String>> expected =
-                Lists.newArrayList(Tuple2.of(1, "one"), Tuple2.of(2, "two"), Tuple2.of(3, "three"));
         assertEquals(new HashSet<>(expected), new HashSet<>(CollectionSink.output));
         CollectionSink.output.clear();
     }

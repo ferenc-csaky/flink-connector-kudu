@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.flink.connector.kudu.table.dynamic;
+package org.apache.flink.connector.kudu.table;
 
 import org.apache.flink.connector.kudu.connector.KuduTableInfo;
 import org.apache.flink.connector.kudu.connector.KuduTestBase;
@@ -31,7 +31,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-/** Unit Tests for {@link KuduDynamicTableSink}. */
+/** Unit Tests for {@link org.apache.flink.connector.kudu.table.KuduDynamicTableSink}. */
 public class KuduDynamicSinkTest extends KuduTestBase {
     public static final String INPUT_TABLE = "books";
     public static StreamExecutionEnvironment env;

@@ -17,6 +17,7 @@
 
 package org.apache.flink.connector.kudu.table;
 
+import org.apache.flink.configuration.Configuration;
 import org.apache.flink.connector.kudu.connector.KuduTableInfo;
 import org.apache.flink.connector.kudu.connector.KuduTestBase;
 import org.apache.flink.connector.kudu.connector.writer.KuduWriterConfig;
@@ -27,11 +28,13 @@ import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.api.TableException;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
-import org.apache.flink.table.catalog.CatalogTableImpl;
-import org.apache.flink.table.catalog.ObjectPath;
-import org.apache.flink.table.factories.TableFactoryService;
-import org.apache.flink.table.factories.TableSinkFactory;
-import org.apache.flink.table.sinks.TableSink;
+import org.apache.flink.table.catalog.CatalogTable;
+import org.apache.flink.table.catalog.Column;
+import org.apache.flink.table.catalog.ObjectIdentifier;
+import org.apache.flink.table.catalog.ResolvedCatalogTable;
+import org.apache.flink.table.catalog.ResolvedSchema;
+import org.apache.flink.table.connector.sink.DynamicTableSink;
+import org.apache.flink.table.factories.FactoryUtil;
 
 import org.apache.kudu.Type;
 import org.apache.kudu.client.KuduScanner;
@@ -55,8 +58,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
-/** Tets for table factory. */
-public class KuduTableFactoryTest extends KuduTestBase {
+/** Tests for dynamic table factory. */
+public class KuduDynamicTableFactoryTest extends KuduTestBase {
     private StreamTableEnvironment tableEnv;
     private String kuduMasters;
 
@@ -64,7 +67,7 @@ public class KuduTableFactoryTest extends KuduTestBase {
     public void init() {
         StreamExecutionEnvironment env =
                 StreamExecutionEnvironment.getExecutionEnvironment().setParallelism(1);
-        tableEnv = KuduTableTestUtils.createTableEnvWithBlinkPlannerStreamingMode(env);
+        tableEnv = KuduTableTestUtils.createTableEnvInStreamingMode(env);
         kuduMasters = getMasterAddress();
     }
 
@@ -194,6 +197,10 @@ public class KuduTableFactoryTest extends KuduTestBase {
 
     @Test
     public void testTableSink() {
+        final ResolvedSchema rSchema =
+                ResolvedSchema.of(
+                        Column.physical("first", DataTypes.STRING()),
+                        Column.physical("second", DataTypes.STRING()));
         final TableSchema schema =
                 TableSchema.builder()
                         .field("first", DataTypes.STRING())
@@ -215,12 +222,16 @@ public class KuduTableFactoryTest extends KuduTestBase {
                         .setIgnoreDuplicate(true)
                         .setIgnoreNotFound(true);
         KuduTableInfo kuduTableInfo = KuduTableInfo.forTable("TestTable12");
-        KuduTableSink expected = new KuduTableSink(builder, kuduTableInfo, schema);
-        final TableSink<?> actualSink =
-                TableFactoryService.find(TableSinkFactory.class, properties)
-                        .createTableSink(
-                                ObjectPath.fromString("default.TestTable12"),
-                                new CatalogTableImpl(schema, properties, null));
+        KuduDynamicTableSink expected = new KuduDynamicTableSink(builder, kuduTableInfo, schema);
+        final DynamicTableSink actualSink =
+                FactoryUtil.createDynamicTableSink(
+                        null,
+                        ObjectIdentifier.of("kudu", "default", "TestTable12"),
+                        new ResolvedCatalogTable(CatalogTable.fromProperties(properties), rSchema),
+                        properties,
+                        new Configuration(),
+                        Thread.currentThread().getContextClassLoader(),
+                        false);
 
         assertEquals(expected, actualSink);
     }

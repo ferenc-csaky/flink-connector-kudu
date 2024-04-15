@@ -27,7 +27,7 @@ import static org.apache.flink.table.api.config.ExecutionConfigOptions.TABLE_EXE
 /** Table API test utilities. */
 public class KuduTableTestUtils {
 
-    public static StreamTableEnvironment createTableEnvWithBlinkPlannerStreamingMode(
+    public static StreamTableEnvironment createTableEnvInStreamingMode(
             StreamExecutionEnvironment env) {
         EnvironmentSettings settings = EnvironmentSettings.newInstance().inStreamingMode().build();
         StreamTableEnvironment tableEnv = StreamTableEnvironment.create(env, settings);
@@ -37,7 +37,7 @@ public class KuduTableTestUtils {
         return tableEnv;
     }
 
-    public static TableEnvironment createTableEnvWithBlinkPlannerBatchMode() {
+    public static TableEnvironment createTableEnvInBatchMode() {
         EnvironmentSettings settings = EnvironmentSettings.newInstance().inBatchMode().build();
         TableEnvironment tableEnv = TableEnvironment.create(settings);
         tableEnv.getConfig()

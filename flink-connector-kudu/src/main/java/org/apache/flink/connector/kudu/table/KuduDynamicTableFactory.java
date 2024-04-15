@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.flink.connector.kudu.table.dynamic;
+package org.apache.flink.connector.kudu.table;
 
 import org.apache.flink.configuration.ConfigOption;
 import org.apache.flink.configuration.ConfigOptions;
@@ -41,8 +41,7 @@ import java.util.Set;
  * Factory for creating configured instances of {@link KuduDynamicTableSource}/{@link
  * KuduDynamicTableSink} in a stream environment.
  */
-public class KuduDynamicTableSourceSinkFactory
-        implements DynamicTableSourceFactory, DynamicTableSinkFactory {
+public class KuduDynamicTableFactory implements DynamicTableSourceFactory, DynamicTableSinkFactory {
     public static final String IDENTIFIER = "kudu";
     public static final ConfigOption<String> KUDU_TABLE =
             ConfigOptions.key("kudu.table")
@@ -162,7 +161,7 @@ public class KuduDynamicTableSourceSinkFactory
         bufferSize.ifPresent(configBuilder::setMaxBufferSize);
         ignoreNotFound.ifPresent(configBuilder::setIgnoreNotFound);
         ignoreDuplicate.ifPresent(configBuilder::setIgnoreDuplicate);
-        return new KuduDynamicTableSink(configBuilder, physicalSchema, tableInfo);
+        return new KuduDynamicTableSink(configBuilder, tableInfo, physicalSchema);
     }
 
     private ReadableConfig getReadableConfig(Context context) {
