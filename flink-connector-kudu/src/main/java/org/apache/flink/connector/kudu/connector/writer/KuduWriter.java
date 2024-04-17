@@ -129,9 +129,9 @@ public class KuduWriter<T> implements SinkWriter<T>, AutoCloseable {
     private KuduSession obtainSession() {
         KuduSession session = client.newSession();
         session.setFlushMode(writerConfig.getFlushMode());
-        session.setTimeoutMillis(writerConfig.getOperationTimeout());
+        session.setTimeoutMillis(writerConfig.getOperationTimeoutMillis());
         session.setMutationBufferSpace(writerConfig.getMaxBufferSize());
-        session.setFlushInterval(writerConfig.getFlushInterval());
+        session.setFlushInterval(writerConfig.getFlushIntervalMillis());
         session.setIgnoreAllDuplicateRows(writerConfig.isIgnoreDuplicate());
         session.setIgnoreAllNotFoundRows(writerConfig.isIgnoreNotFound());
         return session;

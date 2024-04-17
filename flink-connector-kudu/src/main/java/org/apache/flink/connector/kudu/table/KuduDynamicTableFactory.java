@@ -18,190 +18,46 @@
 package org.apache.flink.connector.kudu.table;
 
 import org.apache.flink.configuration.ConfigOption;
-import org.apache.flink.configuration.ConfigOptions;
 import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.connector.kudu.connector.KuduTableInfo;
 import org.apache.flink.connector.kudu.connector.reader.KuduReaderConfig;
 import org.apache.flink.connector.kudu.connector.writer.KuduWriterConfig;
-import org.apache.flink.connector.kudu.table.function.lookup.KuduLookupOptions;
 import org.apache.flink.connector.kudu.table.utils.KuduTableUtils;
-import org.apache.flink.table.api.TableSchema;
+import org.apache.flink.table.catalog.ResolvedSchema;
 import org.apache.flink.table.connector.sink.DynamicTableSink;
 import org.apache.flink.table.connector.source.DynamicTableSource;
+import org.apache.flink.table.connector.source.lookup.LookupOptions;
+import org.apache.flink.table.connector.source.lookup.cache.DefaultLookupCache;
+import org.apache.flink.table.connector.source.lookup.cache.LookupCache;
 import org.apache.flink.table.factories.DynamicTableSinkFactory;
 import org.apache.flink.table.factories.DynamicTableSourceFactory;
 import org.apache.flink.table.factories.FactoryUtil;
 
 import org.apache.kudu.shaded.com.google.common.collect.Sets;
 
-import java.util.Optional;
+import javax.annotation.Nullable;
+
 import java.util.Set;
+
+import static org.apache.flink.connector.kudu.table.KuduCommonOptions.KUDU_MASTERS;
+import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.IDENTIFIER;
+import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.KUDU_FLUSH_INTERVAL;
+import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.KUDU_HASH_COLS;
+import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.KUDU_HASH_PARTITION_NUMS;
+import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.KUDU_IGNORE_DUPLICATE;
+import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.KUDU_IGNORE_NOT_FOUND;
+import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.KUDU_MAX_BUFFER_SIZE;
+import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.KUDU_OPERATION_TIMEOUT;
+import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.KUDU_PRIMARY_KEY_COLS;
+import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.KUDU_REPLICAS;
+import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.KUDU_SCAN_ROW_SIZE;
+import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.KUDU_TABLE;
 
 /**
  * Factory for creating configured instances of {@link KuduDynamicTableSource}/{@link
  * KuduDynamicTableSink} in a stream environment.
  */
 public class KuduDynamicTableFactory implements DynamicTableSourceFactory, DynamicTableSinkFactory {
-    public static final String IDENTIFIER = "kudu";
-    public static final ConfigOption<String> KUDU_TABLE =
-            ConfigOptions.key("kudu.table")
-                    .stringType()
-                    .noDefaultValue()
-                    .withDescription("kudu's table name");
-
-    public static final ConfigOption<String> KUDU_MASTERS =
-            ConfigOptions.key("kudu.masters")
-                    .stringType()
-                    .noDefaultValue()
-                    .withDescription("kudu's master server address");
-
-    public static final ConfigOption<String> KUDU_HASH_COLS =
-            ConfigOptions.key("kudu.hash-columns")
-                    .stringType()
-                    .noDefaultValue()
-                    .withDescription("kudu's hash columns");
-
-    public static final ConfigOption<Integer> KUDU_REPLICAS =
-            ConfigOptions.key("kudu.replicas")
-                    .intType()
-                    .defaultValue(3)
-                    .withDescription("kudu's replica nums");
-
-    public static final ConfigOption<Integer> KUDU_MAX_BUFFER_SIZE =
-            ConfigOptions.key("kudu.max-buffer-size")
-                    .intType()
-                    .noDefaultValue()
-                    .withDescription("kudu's max buffer size");
-
-    public static final ConfigOption<Integer> KUDU_FLUSH_INTERVAL =
-            ConfigOptions.key("kudu.flush-interval")
-                    .intType()
-                    .noDefaultValue()
-                    .withDescription("kudu's data flush interval");
-
-    public static final ConfigOption<Long> KUDU_OPERATION_TIMEOUT =
-            ConfigOptions.key("kudu.operation-timeout")
-                    .longType()
-                    .noDefaultValue()
-                    .withDescription("kudu's operation timeout");
-
-    public static final ConfigOption<Boolean> KUDU_IGNORE_NOT_FOUND =
-            ConfigOptions.key("kudu.ignore-not-found")
-                    .booleanType()
-                    .noDefaultValue()
-                    .withDescription("if true, ignore all not found rows");
-
-    public static final ConfigOption<Boolean> KUDU_IGNORE_DUPLICATE =
-            ConfigOptions.key("kudu.ignore-not-found")
-                    .booleanType()
-                    .noDefaultValue()
-                    .withDescription("if true, ignore all dulicate rows");
-
-    public static final ConfigOption<Integer> KUDU_HASH_PARTITION_NUMS =
-            ConfigOptions.key("kudu.hash-partition-nums")
-                    .intType()
-                    .defaultValue(KUDU_REPLICAS.defaultValue() * 2)
-                    .withDescription(
-                            "kudu's hash partition bucket nums, defaultValue is 2 * replica nums");
-
-    public static final ConfigOption<String> KUDU_PRIMARY_KEY_COLS =
-            ConfigOptions.key("kudu.primary-key-columns")
-                    .stringType()
-                    .noDefaultValue()
-                    .withDescription("kudu's primary key, primary key must be ordered");
-
-    public static final ConfigOption<Integer> KUDU_SCAN_ROW_SIZE =
-            ConfigOptions.key("kudu.scan.row-size")
-                    .intType()
-                    .defaultValue(0)
-                    .withDescription("kudu's scan row size");
-
-    public static final ConfigOption<Long> KUDU_LOOKUP_CACHE_MAX_ROWS =
-            ConfigOptions.key("kudu.lookup.cache.max-rows")
-                    .longType()
-                    .defaultValue(-1L)
-                    .withDescription(
-                            "the max number of rows of lookup cache, over this value, the oldest rows will "
-                                    + "be eliminated. \"cache.max-rows\" and \"cache.ttl\" options must all be specified if any"
-                                    + " of them is "
-                                    + "specified. Cache is not enabled as default.");
-
-    public static final ConfigOption<Long> KUDU_LOOKUP_CACHE_TTL =
-            ConfigOptions.key("kudu.lookup.cache.ttl")
-                    .longType()
-                    .defaultValue(-1L)
-                    .withDescription("the cache time to live.");
-
-    public static final ConfigOption<Integer> KUDU_LOOKUP_MAX_RETRIES =
-            ConfigOptions.key("kudu.lookup.max-retries")
-                    .intType()
-                    .defaultValue(3)
-                    .withDescription("the max retry times if lookup database failed.");
-
-    @Override
-    public DynamicTableSink createDynamicTableSink(Context context) {
-        ReadableConfig config = getReadableConfig(context);
-        String masterAddresses = config.get(KUDU_MASTERS);
-        String tableName = config.get(KUDU_TABLE);
-        Optional<Long> operationTimeout = config.getOptional(KUDU_OPERATION_TIMEOUT);
-        Optional<Integer> flushInterval = config.getOptional(KUDU_FLUSH_INTERVAL);
-        Optional<Integer> bufferSize = config.getOptional(KUDU_MAX_BUFFER_SIZE);
-        Optional<Boolean> ignoreNotFound = config.getOptional(KUDU_IGNORE_NOT_FOUND);
-        Optional<Boolean> ignoreDuplicate = config.getOptional(KUDU_IGNORE_DUPLICATE);
-        TableSchema schema = context.getCatalogTable().getSchema();
-        TableSchema physicalSchema = KuduTableUtils.getSchemaWithSqlTimestamp(schema);
-        KuduTableInfo tableInfo =
-                KuduTableUtils.createTableInfo(
-                        tableName, schema, context.getCatalogTable().toProperties());
-
-        KuduWriterConfig.Builder configBuilder =
-                KuduWriterConfig.Builder.setMasters(masterAddresses);
-        operationTimeout.ifPresent(configBuilder::setOperationTimeout);
-        flushInterval.ifPresent(configBuilder::setFlushInterval);
-        bufferSize.ifPresent(configBuilder::setMaxBufferSize);
-        ignoreNotFound.ifPresent(configBuilder::setIgnoreNotFound);
-        ignoreDuplicate.ifPresent(configBuilder::setIgnoreDuplicate);
-        return new KuduDynamicTableSink(configBuilder, tableInfo, physicalSchema);
-    }
-
-    private ReadableConfig getReadableConfig(Context context) {
-        FactoryUtil.TableFactoryHelper helper = FactoryUtil.createTableFactoryHelper(this, context);
-        return helper.getOptions();
-    }
-
-    @Override
-    public DynamicTableSource createDynamicTableSource(Context context) {
-        ReadableConfig config = getReadableConfig(context);
-        String masterAddresses = config.get(KUDU_MASTERS);
-
-        int scanRowSize = config.get(KUDU_SCAN_ROW_SIZE);
-        long kuduCacheMaxRows = config.get(KUDU_LOOKUP_CACHE_MAX_ROWS);
-        long kuduCacheTtl = config.get(KUDU_LOOKUP_CACHE_TTL);
-        int kuduMaxReties = config.get(KUDU_LOOKUP_MAX_RETRIES);
-
-        // build kudu lookup options
-        KuduLookupOptions kuduLookupOptions =
-                KuduLookupOptions.Builder.options()
-                        .withCacheMaxSize(kuduCacheMaxRows)
-                        .withCacheExpireMs(kuduCacheTtl)
-                        .withMaxRetryTimes(kuduMaxReties)
-                        .build();
-
-        TableSchema schema = context.getCatalogTable().getSchema();
-        TableSchema physicalSchema = KuduTableUtils.getSchemaWithSqlTimestamp(schema);
-        KuduTableInfo tableInfo =
-                KuduTableUtils.createTableInfo(
-                        config.get(KUDU_TABLE), schema, context.getCatalogTable().toProperties());
-
-        KuduReaderConfig.Builder configBuilder =
-                KuduReaderConfig.Builder.setMasters(masterAddresses).setRowLimit(scanRowSize);
-        return new KuduDynamicTableSource(
-                configBuilder,
-                tableInfo,
-                physicalSchema,
-                physicalSchema.getFieldNames(),
-                kuduLookupOptions);
-    }
 
     @Override
     public String factoryIdentifier() {
@@ -210,12 +66,13 @@ public class KuduDynamicTableFactory implements DynamicTableSourceFactory, Dynam
 
     @Override
     public Set<ConfigOption<?>> requiredOptions() {
-        return Sets.newHashSet(KUDU_TABLE, KUDU_MASTERS);
+        return Sets.newHashSet(KUDU_MASTERS);
     }
 
     @Override
     public Set<ConfigOption<?>> optionalOptions() {
         return Sets.newHashSet(
+                KUDU_TABLE,
                 KUDU_HASH_COLS,
                 KUDU_HASH_PARTITION_NUMS,
                 KUDU_PRIMARY_KEY_COLS,
@@ -224,11 +81,76 @@ public class KuduDynamicTableFactory implements DynamicTableSourceFactory, Dynam
                 KUDU_MAX_BUFFER_SIZE,
                 KUDU_MAX_BUFFER_SIZE,
                 KUDU_OPERATION_TIMEOUT,
+                KUDU_FLUSH_INTERVAL,
                 KUDU_IGNORE_NOT_FOUND,
                 KUDU_IGNORE_DUPLICATE,
-                // lookup
-                KUDU_LOOKUP_CACHE_MAX_ROWS,
-                KUDU_LOOKUP_CACHE_TTL,
-                KUDU_LOOKUP_MAX_RETRIES);
+                LookupOptions.CACHE_TYPE,
+                LookupOptions.PARTIAL_CACHE_MAX_ROWS,
+                LookupOptions.PARTIAL_CACHE_EXPIRE_AFTER_ACCESS,
+                LookupOptions.PARTIAL_CACHE_EXPIRE_AFTER_WRITE,
+                LookupOptions.PARTIAL_CACHE_CACHE_MISSING_KEY,
+                LookupOptions.MAX_RETRIES);
+    }
+
+    @Override
+    public DynamicTableSink createDynamicTableSink(Context context) {
+        final FactoryUtil.TableFactoryHelper helper =
+                FactoryUtil.createTableFactoryHelper(this, context);
+        final ReadableConfig config = helper.getOptions();
+
+        helper.validate();
+
+        String tableName =
+                config.getOptional(KUDU_TABLE)
+                        .orElse(context.getObjectIdentifier().getObjectName());
+        ResolvedSchema schema = context.getCatalogTable().getResolvedSchema();
+        KuduTableInfo tableInfo =
+                KuduTableUtils.createTableInfo(
+                        tableName, schema, context.getCatalogTable().toProperties());
+
+        KuduWriterConfig.Builder configBuilder =
+                KuduWriterConfig.Builder.setMasters(config.get(KUDU_MASTERS))
+                        .setOperationTimeoutMillis(config.get(KUDU_OPERATION_TIMEOUT).toMillis())
+                        .setFlushIntervalMillis((int) config.get(KUDU_FLUSH_INTERVAL).toMillis())
+                        .setMaxBufferSize(config.get(KUDU_MAX_BUFFER_SIZE))
+                        .setIgnoreNotFound(config.get(KUDU_IGNORE_NOT_FOUND))
+                        .setIgnoreDuplicate(config.get(KUDU_IGNORE_DUPLICATE));
+
+        return new KuduDynamicTableSink(configBuilder, tableInfo, schema);
+    }
+
+    @Override
+    public DynamicTableSource createDynamicTableSource(Context context) {
+        final FactoryUtil.TableFactoryHelper helper =
+                FactoryUtil.createTableFactoryHelper(this, context);
+        final ReadableConfig config = helper.getOptions();
+
+        helper.validate();
+
+        String tableName =
+                config.getOptional(KUDU_TABLE)
+                        .orElse(context.getObjectIdentifier().getObjectName());
+        ResolvedSchema schema = context.getCatalogTable().getResolvedSchema();
+        KuduTableInfo tableInfo =
+                KuduTableUtils.createTableInfo(
+                        tableName, schema, context.getCatalogTable().toProperties());
+
+        KuduReaderConfig.Builder readerConfigBuilder =
+                KuduReaderConfig.Builder.setMasters(config.get(KUDU_MASTERS))
+                        .setRowLimit(config.get(KUDU_SCAN_ROW_SIZE));
+
+        return new KuduDynamicTableSource(
+                readerConfigBuilder,
+                tableInfo,
+                context.getPhysicalRowDataType(),
+                config.get(LookupOptions.MAX_RETRIES),
+                getLookupCache(config));
+    }
+
+    @Nullable
+    private LookupCache getLookupCache(ReadableConfig config) {
+        return LookupOptions.LookupCacheType.PARTIAL.equals(config.get(LookupOptions.CACHE_TYPE))
+                ? DefaultLookupCache.fromConfig(config)
+                : null;
     }
 }

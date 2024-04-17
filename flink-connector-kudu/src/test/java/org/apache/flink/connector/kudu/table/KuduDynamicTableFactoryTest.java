@@ -25,8 +25,7 @@ import org.apache.flink.core.execution.JobClient;
 import org.apache.flink.runtime.client.JobExecutionException;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.api.DataTypes;
-import org.apache.flink.table.api.TableException;
-import org.apache.flink.table.api.TableSchema;
+import org.apache.flink.table.api.ValidationException;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
 import org.apache.flink.table.catalog.CatalogTable;
 import org.apache.flink.table.catalog.Column;
@@ -75,9 +74,9 @@ public class KuduDynamicTableFactoryTest extends KuduTestBase {
     public void testMissingMasters() throws Exception {
         tableEnv.executeSql(
                 "CREATE TABLE TestTable11 (`first` STRING, `second` INT) "
-                        + "WITH ('connector.type'='kudu', 'kudu.table'='TestTable11')");
+                        + "WITH ('connector'='kudu', 'kudu.table'='TestTable11')");
         assertThrows(
-                TableException.class,
+                ValidationException.class,
                 () -> tableEnv.executeSql("INSERT INTO TestTable11 values ('f', 1)"));
     }
 
@@ -85,7 +84,7 @@ public class KuduDynamicTableFactoryTest extends KuduTestBase {
     public void testNonExistingTable() throws Exception {
         tableEnv.executeSql(
                 "CREATE TABLE TestTable11 (`first` STRING, `second` INT) "
-                        + "WITH ('connector.type'='kudu', 'kudu.table'='TestTable11', 'kudu.masters'='"
+                        + "WITH ('connector'='kudu', 'kudu.table'='TestTable11', 'kudu.masters'='"
                         + kuduMasters
                         + "')");
         JobClient jobClient =
@@ -102,7 +101,7 @@ public class KuduDynamicTableFactoryTest extends KuduTestBase {
     public void testCreateTable() throws Exception {
         tableEnv.executeSql(
                 "CREATE TABLE TestTable11 (`first` STRING, `second` STRING) "
-                        + "WITH ('connector.type'='kudu', 'kudu.table'='TestTable11', 'kudu.masters'='"
+                        + "WITH ('connector'='kudu', 'kudu.table'='TestTable11', 'kudu.masters'='"
                         + kuduMasters
                         + "', "
                         + "'kudu.hash-columns'='first', 'kudu.primary-key-columns'='first')");
@@ -122,7 +121,7 @@ public class KuduDynamicTableFactoryTest extends KuduTestBase {
         // Test it when creating the table...
         tableEnv.executeSql(
                 "CREATE TABLE TestTableTs (`first` STRING, `second` TIMESTAMP(3)) "
-                        + "WITH ('connector.type'='kudu', 'kudu.masters'='"
+                        + "WITH ('connector'='kudu', 'kudu.masters'='"
                         + kuduMasters
                         + "', "
                         + "'kudu.hash-columns'='first', 'kudu.primary-key-columns'='first')");
@@ -159,7 +158,7 @@ public class KuduDynamicTableFactoryTest extends KuduTestBase {
         // Creating a table
         tableEnv.executeSql(
                 "CREATE TABLE TestTable12 (`first` STRING, `second` STRING) "
-                        + "WITH ('connector.type'='kudu', 'kudu.table'='TestTable12', 'kudu.masters'='"
+                        + "WITH ('connector'='kudu', 'kudu.table'='TestTable12', 'kudu.masters'='"
                         + kuduMasters
                         + "', "
                         + "'kudu.hash-columns'='first', 'kudu.primary-key-columns'='first')");
@@ -173,7 +172,7 @@ public class KuduDynamicTableFactoryTest extends KuduTestBase {
         // Then another one in SQL that refers to the previously created one
         tableEnv.executeSql(
                 "CREATE TABLE TestTable12b (`first` STRING, `second` STRING) "
-                        + "WITH ('connector.type'='kudu', 'kudu.table'='TestTable12', 'kudu.masters'='"
+                        + "WITH ('connector'='kudu', 'kudu.table'='TestTable12', 'kudu.masters'='"
                         + kuduMasters
                         + "')");
         tableEnv.executeSql("INSERT INTO TestTable12b values ('f2','s2')")
@@ -197,17 +196,12 @@ public class KuduDynamicTableFactoryTest extends KuduTestBase {
 
     @Test
     public void testTableSink() {
-        final ResolvedSchema rSchema =
+        final ResolvedSchema schema =
                 ResolvedSchema.of(
                         Column.physical("first", DataTypes.STRING()),
                         Column.physical("second", DataTypes.STRING()));
-        final TableSchema schema =
-                TableSchema.builder()
-                        .field("first", DataTypes.STRING())
-                        .field("second", DataTypes.STRING())
-                        .build();
         final Map<String, String> properties = new HashMap<>();
-        properties.put("connector.type", "kudu");
+        properties.put("connector", "kudu");
         properties.put("kudu.masters", kuduMasters);
         properties.put("kudu.table", "TestTable12");
         properties.put("kudu.ignore-not-found", "true");
@@ -217,7 +211,7 @@ public class KuduDynamicTableFactoryTest extends KuduTestBase {
 
         KuduWriterConfig.Builder builder =
                 KuduWriterConfig.Builder.setMasters(kuduMasters)
-                        .setFlushInterval(10000)
+                        .setFlushIntervalMillis(10000)
                         .setMaxBufferSize(10000)
                         .setIgnoreDuplicate(true)
                         .setIgnoreNotFound(true);
@@ -227,7 +221,7 @@ public class KuduDynamicTableFactoryTest extends KuduTestBase {
                 FactoryUtil.createDynamicTableSink(
                         null,
                         ObjectIdentifier.of("kudu", "default", "TestTable12"),
-                        new ResolvedCatalogTable(CatalogTable.fromProperties(properties), rSchema),
+                        new ResolvedCatalogTable(CatalogTable.fromProperties(properties), schema),
                         properties,
                         new Configuration(),
                         Thread.currentThread().getContextClassLoader(),

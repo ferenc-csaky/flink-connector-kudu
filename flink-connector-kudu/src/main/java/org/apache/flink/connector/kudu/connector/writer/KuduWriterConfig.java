@@ -35,26 +35,26 @@ public class KuduWriterConfig implements Serializable {
 
     private final String masters;
     private final FlushMode flushMode;
-    private final long operationTimeout;
+    private final long operationTimeoutMillis;
     private final int maxBufferSize;
-    private final int flushInterval;
+    private final int flushIntervalMillis;
     private final boolean ignoreNotFound;
     private final boolean ignoreDuplicate;
 
     private KuduWriterConfig(
             String masters,
             FlushMode flushMode,
-            long operationTimeout,
+            long operationTimeoutMillis,
             int maxBufferSize,
-            int flushInterval,
+            int flushIntervalMillis,
             boolean ignoreNotFound,
             boolean ignoreDuplicate) {
 
         this.masters = checkNotNull(masters, "Kudu masters cannot be null");
         this.flushMode = checkNotNull(flushMode, "Kudu flush mode cannot be null");
-        this.operationTimeout = operationTimeout;
+        this.operationTimeoutMillis = operationTimeoutMillis;
         this.maxBufferSize = maxBufferSize;
-        this.flushInterval = flushInterval;
+        this.flushIntervalMillis = flushIntervalMillis;
         this.ignoreNotFound = ignoreNotFound;
         this.ignoreDuplicate = ignoreDuplicate;
     }
@@ -67,16 +67,16 @@ public class KuduWriterConfig implements Serializable {
         return flushMode;
     }
 
-    public long getOperationTimeout() {
-        return operationTimeout;
+    public long getOperationTimeoutMillis() {
+        return operationTimeoutMillis;
     }
 
     public int getMaxBufferSize() {
         return maxBufferSize;
     }
 
-    public int getFlushInterval() {
-        return flushInterval;
+    public int getFlushIntervalMillis() {
+        return flushIntervalMillis;
     }
 
     public boolean isIgnoreNotFound() {
@@ -100,11 +100,11 @@ public class KuduWriterConfig implements Serializable {
         private String masters;
         private FlushMode flushMode = FlushMode.AUTO_FLUSH_BACKGROUND;
         // Reference from AsyncKuduClientBuilder defaultOperationTimeoutMs.
-        private long timeout = AsyncKuduClient.DEFAULT_OPERATION_TIMEOUT_MS;
+        private long operationTimeoutMillis = AsyncKuduClient.DEFAULT_OPERATION_TIMEOUT_MS;
         // Reference from AsyncKuduSession mutationBufferMaxOps 1000.
         private int maxBufferSize = 1000;
         // Reference from AsyncKuduSession flushIntervalMillis 1000.
-        private int flushInterval = 1000;
+        private int flushIntervalMillis = 1000;
         // Reference from AsyncKuduSession ignoreAllNotFoundRows false.
         private boolean ignoreNotFound = false;
         // Reference from AsyncKuduSession ignoreAllDuplicateRows false.
@@ -136,13 +136,13 @@ public class KuduWriterConfig implements Serializable {
             return this;
         }
 
-        public Builder setFlushInterval(int flushInterval) {
-            this.flushInterval = flushInterval;
+        public Builder setFlushIntervalMillis(int flushIntervalMillis) {
+            this.flushIntervalMillis = flushIntervalMillis;
             return this;
         }
 
-        public Builder setOperationTimeout(long timeout) {
-            this.timeout = timeout;
+        public Builder setOperationTimeoutMillis(long operationTimeoutMillis) {
+            this.operationTimeoutMillis = operationTimeoutMillis;
             return this;
         }
 
@@ -160,9 +160,9 @@ public class KuduWriterConfig implements Serializable {
             return new KuduWriterConfig(
                     masters,
                     flushMode,
-                    timeout,
+                    operationTimeoutMillis,
                     maxBufferSize,
-                    flushInterval,
+                    flushIntervalMillis,
                     ignoreNotFound,
                     ignoreDuplicate);
         }
@@ -173,9 +173,9 @@ public class KuduWriterConfig implements Serializable {
                     Objects.hash(
                             masters,
                             flushMode,
-                            timeout,
+                            operationTimeoutMillis,
                             maxBufferSize,
-                            flushInterval,
+                            flushIntervalMillis,
                             ignoreNotFound,
                             ignoreDuplicate);
             return result;
@@ -192,9 +192,9 @@ public class KuduWriterConfig implements Serializable {
             Builder that = (Builder) o;
             return Objects.equals(masters, that.masters)
                     && Objects.equals(flushMode, that.flushMode)
-                    && Objects.equals(timeout, that.timeout)
+                    && Objects.equals(operationTimeoutMillis, that.operationTimeoutMillis)
                     && Objects.equals(maxBufferSize, that.maxBufferSize)
-                    && Objects.equals(flushInterval, that.flushInterval)
+                    && Objects.equals(flushIntervalMillis, that.flushIntervalMillis)
                     && Objects.equals(ignoreNotFound, that.ignoreNotFound)
                     && Objects.equals(ignoreDuplicate, that.ignoreDuplicate);
         }

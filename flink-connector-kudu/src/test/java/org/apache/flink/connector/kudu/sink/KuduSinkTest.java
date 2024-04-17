@@ -17,6 +17,7 @@
 
 package org.apache.flink.connector.kudu.sink;
 
+import org.apache.flink.api.connector.sink2.Sink;
 import org.apache.flink.api.connector.sink2.SinkWriter;
 import org.apache.flink.connector.kudu.connector.KuduTableInfo;
 import org.apache.flink.connector.kudu.connector.KuduTestBase;
@@ -101,7 +102,8 @@ public class KuduSinkTest extends KuduTestBase {
                         .setOperationMapper(initOperationMapper(columns))
                         .build();
 
-        assertThatThrownBy(() -> sink.createWriter(null)).isInstanceOf(RuntimeException.class);
+        assertThatThrownBy(() -> sink.createWriter((Sink.InitContext) null))
+                .isInstanceOf(RuntimeException.class);
     }
 
     @Test
@@ -119,7 +121,7 @@ public class KuduSinkTest extends KuduTestBase {
                         .setOperationMapper(initOperationMapper(KuduTestBase.columns))
                         .build();
 
-        SinkWriter<Row> writer = sink.createWriter(null);
+        SinkWriter<Row> writer = sink.createWriter((Sink.InitContext) null);
 
         for (Row kuduRow : booksDataRow()) {
             writer.write(kuduRow, null);
@@ -149,7 +151,7 @@ public class KuduSinkTest extends KuduTestBase {
                         .setOperationMapper(initOperationMapper(KuduTestBase.columns))
                         .build();
 
-        SinkWriter<Row> writer = sink.createWriter(null);
+        SinkWriter<Row> writer = sink.createWriter((Sink.InitContext) null);
 
         for (Row kuduRow : booksDataRow()) {
             writer.write(kuduRow, null);
@@ -199,7 +201,7 @@ public class KuduSinkTest extends KuduTestBase {
                         .setOperationMapper(initOperationMapper(columns))
                         .build();
 
-        SinkWriter<Row> writer = sink.createWriter(null);
+        SinkWriter<Row> writer = sink.createWriter((Sink.InitContext) null);
 
         int totalRecords = 100000;
         for (int i = 0; i < totalRecords; i++) {

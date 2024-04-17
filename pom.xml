@@ -66,6 +66,10 @@ under the License.
 
 		<!-- For directory plugin -->
 		<flink.parent.artifactId>flink-connector-kudu-parent</flink.parent.artifactId>
+		<surefire.module.config>
+			--add-opens=java.base/java.lang=ALL-UNNAMED
+			--add-opens=java.base/java.util=ALL-UNNAMED
+		</surefire.module.config>
 	</properties>
 
 	<modules>
@@ -248,6 +252,12 @@ under the License.
 				<groupId>com.esotericsoftware.kryo</groupId>
 				<artifactId>kryo</artifactId>
 				<version>2.24.0</version>
+			</dependency>
+
+			<dependency>
+				<groupId>org.apache.commons</groupId>
+				<artifactId>commons-lang3</artifactId>
+				<version>3.12.0</version>
 			</dependency>
 			<!-- End of dependencies for dependency convergence -->
 		</dependencies>

@@ -52,7 +52,7 @@ public class KuduDynamicSinkTest extends KuduTestBase {
     }
 
     @Test
-    public void testKuduSink() throws Exception {
+    public void testKuduSink() {
         String createSql =
                 "CREATE TABLE "
                         + INPUT_TABLE
@@ -74,7 +74,7 @@ public class KuduDynamicSinkTest extends KuduTestBase {
                         + "','kudu.flush-interval'='1000"
                         + "','kudu.operation-timeout'='500"
                         + "','kudu.ignore-not-found'='true"
-                        + "','kudu.ignore-not-found'='true'"
+                        + "','kudu.ignore-duplicate'='true'"
                         + ")";
         tEnv.executeSql(createSql);
         tEnv.executeSql(
