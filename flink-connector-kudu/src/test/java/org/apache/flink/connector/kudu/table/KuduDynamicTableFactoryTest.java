@@ -118,6 +118,24 @@ public class KuduDynamicTableFactoryTest extends KuduTestBase {
     }
 
     @Test
+    public void testSqlPrimaryKey() throws Exception {
+        tableEnv.executeSql(
+                "CREATE TABLE TestTable11 (`first` STRING, `second` STRING, PRIMARY KEY (`first`) NOT ENFORCED) "
+                        + "WITH ('connector'='kudu', 'table-name'='TestTable11', 'masters'='"
+                        + kuduMasters
+                        + "', "
+                        + "'hash-columns'='first')");
+
+        tableEnv.executeSql("INSERT INTO TestTable11 values ('f', 's')")
+                .getJobClient()
+                .get()
+                .getJobExecutionResult()
+                .get(1, TimeUnit.MINUTES);
+
+        validateSingleKey("TestTable11");
+    }
+
+    @Test
     public void testTimestamp() throws Exception {
         // Timestamp should be bridged to sql.Timestamp
         // Test it when creating the table...
