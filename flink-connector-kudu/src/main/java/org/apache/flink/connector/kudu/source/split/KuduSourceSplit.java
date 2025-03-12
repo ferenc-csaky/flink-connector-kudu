@@ -17,6 +17,7 @@
 
 package org.apache.flink.connector.kudu.source.split;
 
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.flink.api.connector.source.SourceSplit;
 
 import java.io.Serializable;
@@ -42,7 +43,7 @@ public class KuduSourceSplit implements SourceSplit, Serializable {
 
     @Override
     public String splitId() {
-        return Base64.getEncoder().encodeToString(serializedScanToken);
+        return DigestUtils.sha1Hex(serializedScanToken);
     }
 
     @Override

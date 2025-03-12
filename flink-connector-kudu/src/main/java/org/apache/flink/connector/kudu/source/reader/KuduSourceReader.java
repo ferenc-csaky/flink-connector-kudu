@@ -52,6 +52,7 @@ public class KuduSourceReader<OUT>
     protected void onSplitFinished(Map<String, KuduSourceSplit> finishedSplits) {
         context.sendSourceEventToCoordinator(
                 new SplitFinishedEvent(new ArrayList<>(finishedSplits.values())));
+        context.sendSplitRequest();
     }
 
     @Override

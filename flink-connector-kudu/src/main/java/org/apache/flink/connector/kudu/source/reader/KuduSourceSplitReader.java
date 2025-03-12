@@ -88,7 +88,7 @@ public class KuduSourceSplitReader implements SplitReader<RowResult, KuduSourceS
 
     @Override
     public void handleSplitsChanges(SplitsChange<KuduSourceSplit> splitsChanges) {
-        LOG.debug("Handling split change {}", splitsChanges);
+        LOG.debug("Handling split change {}", splitsChanges.splits());
         splits.addAll(splitsChanges.splits());
     }
 

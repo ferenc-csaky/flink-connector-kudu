@@ -122,15 +122,14 @@ public class KuduSourceEnumerator
 
     @Override
     public void start() {
-        if (boundedness == Boundedness.CONTINUOUS_UNBOUNDED && Objects.nonNull(discoveryInterval)) {
+        if (boundedness == Boundedness.CONTINUOUS_UNBOUNDED) {
             context.callAsync(
-                    () -> enumerateNewSplits(this::shouldEnumerateNewSplits),
+                    this::enumerateNewSplits,
                     this::assignSplits,
                     0,
                     discoveryInterval.toMillis());
-        } else if (boundedness.equals(Boundedness.BOUNDED)) {
-            List<KuduSourceSplit> splits = enumerateNewSplits(this::shouldEnumerateNewSplits);
-            assignSplits(splits, null);
+        } else {
+            context.callAsync(this::enumerateNewSplits, this::assignSplits);
         }
     }
 
@@ -180,7 +179,7 @@ public class KuduSourceEnumerator
                     splitFinishedEvent.getFinishedSplits());
             pending.removeAll(splitFinishedEvent.getFinishedSplits());
             readersAwaitingSplit.add(subtaskId);
-            assignSplitsToReaders();
+            //assignSplitsToReaders();
         }
     }
 
@@ -189,8 +188,8 @@ public class KuduSourceEnumerator
     // Outstanding meaning that there are no pending splits, and no enumerated but not assigned
     // splits for the
     // current period.
-    private List<KuduSourceSplit> enumerateNewSplits(Supplier<Boolean> shouldGenerate) {
-        if (!shouldGenerate.get()) {
+    private List<KuduSourceSplit> enumerateNewSplits() {
+        if (!shouldEnumerateNewSplits()) {
             return null;
         }
         List<KuduSourceSplit> newSplits;
